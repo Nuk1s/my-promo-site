@@ -245,13 +245,16 @@ const my-promo-site = process.env.my-promo-site;
 </div>
 
 <script>
-
+// Проверка пароля (исправленная версия)
 const ADMIN_PASSWORD = "wW634284126147168Ww";
 const inputPass = prompt("Введите пароль администратора:");
 if(inputPass !== ADMIN_PASSWORD) {
     alert("Доступ запрещён!");
     window.location.href = "/";
-
+}
+</script>
+    
+<script>
 let cards = [];
 let editMode = false;
 let currentCardId = null;
@@ -302,7 +305,7 @@ async function saveCards() {
         const response = await fetch(`https://api.github.com/repos/${REPO}/contents/data/cards.json`, {
             method: 'PUT',
             headers: {
-                'Authorization': `token ${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}`,
+                'Authorization': `token ${GITHUB_TOKEN}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
