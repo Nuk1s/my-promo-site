@@ -1,0 +1,17 @@
+[build]
+  publish = "/"
+  command = "echo 'Build started'"
+
+[[headers]]
+  for = "/*.json"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+
+
+

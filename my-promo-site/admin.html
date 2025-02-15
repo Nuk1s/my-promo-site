@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const REPO = process.env.REPO;
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ-панель</title>
+    <style>
+        :root {
+            --primary-color: #6c5ce7;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f6fa;
+        }
+
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card-preview {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .card-preview:hover {
+            transform: translateY(-3px);
+        }
+
+        .form-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .step-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .file-upload {
+            position: relative;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+        }
+
+        .preview-section {
+            border: 2px dashed #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 200px;
+        }
+
+        .preview-card {
+            max-width: 300px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .preview-steps {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+
+        .preview-step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .preview-step img {
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            padding: 3px;
+            max-width: 100px;
+        }
+
+        .step-preview {
+            max-width: 100px;
+            display: block;
+            margin-top: 10px;
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .step-header button {
+            padding: 2px 8px;
+            font-size: 18px;
+            line-height: 1;
+            background: none;
+            color: var(--danger-color);
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="admin-container">
+    <h1>Админ-панель ✨</h1>
+<button onclick="window.open('index.html', '_blank')" 
+        class="btn btn-primary"
+        title="Откроется в новой вкладке">
+    ← На сайт 
+</button>
+
+    <div class="button-group" style="margin-top: 20px; margin-bottom: 30px;">
+        <button type="button" class="btn btn-danger" onclick="clearAllData()">
+            🗑️ Очистить ВСЕ данные
+        </button>
+    </div>
+
+    <div class="cards-grid" id="cardsList"></div>
+
+    <div class="form-panel">
+        <h2 id="formTitle">Добавить новую карточку</h2>
+        <form id="cardForm">
+            <input type="hidden" id="editId">
+            
+            <div class="form-group">
+                <label>Заголовок:</label>
+                <input type="text" id="cardTitle" required>
+            </div>
+
+            <div class="form-group">
+                <label>Изображение:</label>
+                <div class="file-upload">
+                    <button type="button" class="btn" onclick="document.getElementById('fileInput').click()">
+                        📁 Выбрать файл
+                    </button>
+                    <input type="file" id="fileInput" accept="image/*">
+                </div>
+                <input type="text" id="cardImage" placeholder="Или введите URL" required>
+                <img id="previewImage" class="step-preview" style="display: none;">
+            </div>
+
+            <div class="form-group">
+                <label>Ссылка на сайт:</label>
+                <input type="url" id="cardLink" required>
+            </div>
+
+            <div class="form-group">
+                <label>Промокоды (через запятую):</label>
+                <textarea id="promoCodes"></textarea>
+            </div>
+
+            <div id="stepsContainer"></div>
+
+            <div class="button-group">
+                <button type="button" class="btn btn-success" onclick="addStep()">
+                    ➕ Добавить шаг
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    💾 Сохранить
+                </button>
+                <button type="button" class="btn btn-danger" onclick="clearForm()">
+                    ✖ Очистить
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="preview-section">
+        <h3>Предпросмотр карточки:</h3>
+        <div class="preview-card" id="cardPreview"></div>
+    </div>
+</div>
+
+<script>
+
+const ADMIN_PASSWORD = "wW634284126147168Ww";
+const inputPass = prompt("Введите пароль администратора:");
+if(inputPass !== ADMIN_PASSWORD) {
+    alert("Доступ запрещён!");
+    window.location.href = "/";
+
+let cards = [];
+let editMode = false;
+let currentCardId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadCards();
+    setupEventListeners();
+    document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+    document.getElementById('cardForm').addEventListener('submit', saveCard);
+    addStep();
+    checkStorage();
+});
+
+function setupEventListeners() {
+    document.querySelectorAll('#cardTitle, #cardImage, #cardLink, #promoCodes').forEach(element => {
+        element.addEventListener('input', updatePreview);
+    });
+}
+
+async function compressImage(file, quality = 0.7) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.src = url;
+        
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const MAX_WIDTH = 800;
+            const scale = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scale;
+
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            URL.revokeObjectURL(url);
+            
+            canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality);
+        };
+    });
+}
+
+const GITHUB_TOKEN = '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';
+const REPO = 'Nuk1s/my-promo-site';
+
+async function saveCards() {
+    try {
+        const response = await fetch(`https://api.github.com/repos/${REPO}/contents/data/cards.json`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${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}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: 'Обновление карточек',
+                content: btoa(JSON.stringify({cards})),
+                sha: await getFileSHA()
+            })
+        });
+        return response.ok;
+    } catch (error) {
+        console.error('Ошибка:', error);
+        return false;
+    }
+}
+
+async function loadCards() {
+    try {
+        const response = await fetch(`https://raw.githubusercontent.com/${REPO}/main/data/cards.json`);
+        const data = await response.json();
+        cards = data.cards;
+        renderCards();
+    } catch (error) {
+        console.error('Ошибка загрузки:', error);
+        cards = [];
+    }
+}
+
+async function getFileSHA() {
+    const response = await fetch(`https://api.github.com/repos/${REPO}/contents/data/cards.json`);
+    const data = await response.json();
+    return data.sha;
+}
+
+function renderCards() {
+    const container = document.getElementById('cardsList');
+    container.innerHTML = cards.map(card => `
+        <div class="card-preview" data-id="${card.id}">
+            <h3>${sanitizeInput(card.title)}</h3>
+            <img src="${sanitizeInput(card.image)}" style="max-width:100%;height:150px;object-fit:cover;">
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="editCard('${card.id}')">✏️ Редактировать</button>
+                <button class="btn btn-danger" onclick="deleteCard('${card.id}')">🗑️ Удалить</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function addStep() {
+    const stepsContainer = document.getElementById('stepsContainer');
+    const stepNumber = stepsContainer.children.length + 1;
+    
+    const newStep = document.createElement('div');
+    newStep.className = 'step-card';
+    newStep.innerHTML = `
+        <div class="step-header">
+            <span>Шаг ${stepNumber}</span>
+            <button type="button" onclick="removeStep(this)">×</button>
+        </div>
+        <div class="form-group">
+            <textarea class="step-text" required></textarea>
+        </div>
+        <div class="form-group">
+            <label>Изображение шага:</label>
+            <div class="file-upload">
+                <button type="button" class="btn" onclick="this.nextElementSibling.click()">📁 Выбрать файл</button>
+                <input type="file" class="step-file" accept="image/*">
+            </div>
+            <input type="text" class="step-image" placeholder="Или введите URL">
+            <img class="step-preview" style="display:none;">
+        </div>
+    `;
+    
+    newStep.querySelector('.step-file').addEventListener('change', handleStepImage);
+    stepsContainer.appendChild(newStep);
+    updatePreview();
+}
+
+async function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        const compressedBlob = await compressImage(file);
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            document.getElementById('cardImage').value = e.target.result;
+            document.getElementById('previewImage').src = e.target.result;
+            document.getElementById('previewImage').style.display = 'block';
+            updatePreview();
+        };
+        
+        reader.readAsDataURL(compressedBlob);
+    } catch (error) {
+        console.error('Ошибка обработки файла:', error);
+        alert('Не удалось загрузить изображение!');
+    }
+}
+
+async function handleStepImage(event) {
+    const input = event.target;
+    const file = input.files[0];
+    if (!file) return;
+
+    try {
+        const compressedBlob = await compressImage(file);
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const parent = input.closest('.form-group');
+            parent.querySelector('.step-image').value = e.target.result;
+            const preview = parent.querySelector('.step-preview');
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            updatePreview();
+        };
+        
+        reader.readAsDataURL(compressedBlob);
+    } catch (error) {
+        console.error('Ошибка обработки файла:', error);
+        alert('Не удалось загрузить изображение шага!');
+    }
+}
+
+function deleteCard(id) {
+    if (!confirm('Удалить карточку? ❌')) return;
+    
+    cards = cards.filter(c => c.id !== Number(id));
+    if(saveCards()) {
+        renderCards();
+        alert('Карточка удалена!');
+    }
+}
+
+function editCard(id) {
+    const card = cards.find(c => c.id === Number(id));
+    if (!card) return alert('Карточка не найдена!');
+
+    editMode = true;
+    currentCardId = card.id;
+
+    document.getElementById('editId').value = card.id;
+    document.getElementById('cardTitle').value = card.title;
+    document.getElementById('cardImage').value = card.image;
+    document.getElementById('cardLink').value = card.link;
+    document.getElementById('promoCodes').value = card.promoCodes.join(', ');
+
+    const stepsContainer = document.getElementById('stepsContainer');
+    stepsContainer.innerHTML = '';
+    card.instruction.forEach((step, index) => {
+        addStep();
+        const stepElement = document.querySelectorAll('.step-card')[index];
+        stepElement.querySelector('.step-text').value = step.text;
+        stepElement.querySelector('.step-image').value = step.image;
+        const preview = stepElement.querySelector('.step-preview');
+        if (step.image) {
+            preview.src = step.image;
+            preview.style.display = 'block';
+        }
+    });
+
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function saveCard(e) {
+    e.preventDefault();
+
+    const title = document.getElementById('cardTitle').value.trim();
+    const image = document.getElementById('cardImage').value.trim();
+    const link = document.getElementById('cardLink').value.trim();
+    
+    if (!title || !image || !link) {
+        return alert('Заполните все обязательные поля!');
+    }
+    
+    if (!isValidUrl(link)) {
+        return alert('Укажите корректный URL!');
+    }
+
+    const cardData = {
+        id: editMode ? currentCardId : generateId(),
+        title: sanitizeInput(title),
+        image: sanitizeInput(image),
+        link: sanitizeInput(link),
+        promoCodes: document.getElementById('promoCodes').value
+            .split(',')
+            .map(code => sanitizeInput(code.trim()))
+            .filter(code => code),
+        instruction: Array.from(document.querySelectorAll('.step-card')).map(step => ({
+            text: sanitizeInput(step.querySelector('.step-text').value.trim()),
+            image: sanitizeInput(step.querySelector('.step-image').value.trim())
+        }))
+    };
+
+    if (cardData.instruction.length === 0) {
+        return alert('Добавьте хотя бы один шаг!');
+    }
+
+    if (editMode) {
+        const index = cards.findIndex(c => c.id === cardData.id);
+        if (index === -1) return alert('Ошибка: карточка не найдена');
+        cards[index] = cardData;
+    } else {
+        cards.push(cardData);
+    }
+
+    if (saveCards()) {
+        clearForm();
+        renderCards();
+        alert(`Карточка ${editMode ? 'обновлена' : 'добавлена'}! ✅`);
+        editMode = false;
+        currentCardId = null;
+    }
+}
+
+function clearForm() {
+    document.getElementById('cardForm').reset();
+    document.getElementById('stepsContainer').innerHTML = '';
+    document.querySelectorAll('.step-preview').forEach(img => {
+        img.style.display = 'none';
+        img.src = '';
+    });
+    document.getElementById('previewImage').style.display = 'none';
+    addStep();
+    editMode = false;
+    currentCardId = null;
+    updatePreview();
+}
+
+function updatePreview() {
+    const preview = document.getElementById('cardPreview');
+    const steps = Array.from(document.querySelectorAll('.step-card')).map(step => ({
+        text: step.querySelector('.step-text').value,
+        image: step.querySelector('.step-image').value
+    }));
+
+    preview.innerHTML = `
+        <h4>${sanitizeInput(document.getElementById('cardTitle').value) || 'Название карточки'}</h4>
+        <img src="${sanitizeInput(document.getElementById('cardImage').value) || ''}" 
+             style="max-width:100%;height:150px;object-fit:cover;">
+        <div class="preview-steps">
+            ${steps.map((step, index) => `
+                <div class="preview-step">
+                    <p>Шаг ${index+1}: ${sanitizeInput(step.text) || ''}</p>
+                    ${step.image ? `<img src="${sanitizeInput(step.image)}" style="max-width:100px;">` : ''}
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function initSampleData() {
+    // Оставляем пустой массив для инициализации
+    cards = [];
+    saveCards();
+}
+function clearAllData() {
+    if (confirm('Очистить ВСЕ данные? Это действие нельзя отменить!')) {
+        localStorage.clear();
+        cards = [];
+        renderCards();
+        alert('Все данные удалены!');
+    }
+}
+
+function isValidUrl(url) {
+    try {
+        new URL(url);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+function sanitizeInput(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+function removeStep(button) {
+    const steps = document.querySelectorAll('.step-card');
+    if (steps.length <= 1) {
+        alert('Должен остаться хотя бы один шаг!');
+        return;
+    }
+    button.closest('.step-card').remove();
+    updateStepNumbers();
+    updatePreview();
+}
+
+function updateStepNumbers() {
+    document.querySelectorAll('.step-card').forEach((step, index) => {
+        step.querySelector('.step-header span').textContent = `Шаг ${index + 1}`;
+    });
+}
+
+function checkStorage() {
+    try {
+        const total = JSON.stringify(localStorage).length;
+        const usageMB = (total / 1024 / 1024).toFixed(2);
+        
+        if (usageMB > 3) {
+            alert(`Внимание! Использовано ${usageMB}MB из 5MB\nРекомендуется удалить старые данные.`);
+        }
+    } catch (error) {
+        console.error('Ошибка проверки хранилища:', error);
+    }
+}
+
+// Инициализация предпросмотра при загрузке
+updatePreview();
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBWoKwl8IdhRgh0FHo2MP5Ctrlm_914Owk",
+    authDomain: "nukes-b01cb.firebaseapp.com",
+    projectId: "nukes-b01cb",
+  };
+  
+  firebase.initializeApp(firebaseConfig);
+  
+  const provider = new firebase.auth.GoogleAuthProvider();
+  
+  firebase.auth().signInWithPopup(provider)
+    .catch(error => {
+      console.error(error);
+      window.location.href = "/";
+    });
+
+</script>
+</body>
+</html>
